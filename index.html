@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game Full-Width</title>
+    <title>Dino Game Tall Edition</title>
     <style>
-        /* On supprime toutes les marges et on force le plein écran */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background: #f7f7f7; }
         
         #game-container { 
-            width: 100%; /* Prend toute la largeur, sans limite */
-            height: 200px; 
+            width: 100%; 
+            height: 400px; /* HAUTEUR AUGMENTÉE ICI */
             position: absolute; 
             top: 50%; 
             transform: translateY(-50%); 
@@ -19,10 +18,10 @@
 
         canvas { 
             width: 100%; 
-            height: 200px; 
+            height: 400px; /* HAUTEUR AUGMENTÉE ICI AUSSI */
             display: block; 
             background: #fff; 
-            border-bottom: 2px solid #535353; 
+            border-bottom: 3px solid #535353; 
         }
     </style>
 </head>
@@ -36,10 +35,9 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Fonction de redimensionnement sans AUCUNE limite
         function resize() {
             canvas.width = window.innerWidth;
-            canvas.height = 200;
+            canvas.height = 400; // Nouvelle hauteur logique
         }
         window.addEventListener('resize', resize);
         resize();
@@ -47,13 +45,28 @@
         let score = 0;
         let gameSpeed = 6;
         let isGameOver = false;
-        let gravity = 0.6;
+        let gravity = 0.7; // Un peu plus lourd pour la hauteur
         let obstacles = [];
-        let dino = { x: 50, y: 150, width: 40, height: 40, dy: 0, grounded: false };
+        
+        // Position du sol ajustée à 350 (bas du canvas)
+        const groundY = 350;
+
+        let dino = { 
+            x: 50, 
+            y: groundY - 40, 
+            width: 40, 
+            height: 40, 
+            dy: 0, 
+            jumpForce: 15, // Saut plus puissant pour la nouvelle hauteur
+            grounded: false 
+        };
 
         function jump() {
             if (isGameOver) { resetGame(); }
-            else if (dino.grounded) { dino.dy = -12; dino.grounded = false; }
+            else if (dino.grounded) { 
+                dino.dy = -dino.jumpForce; 
+                dino.grounded = false; 
+            }
         }
 
         window.addEventListener('keydown', (e) => { if(e.code === "Space") jump(); });
@@ -62,7 +75,7 @@
 
         function resetGame() {
             score = 0; gameSpeed = 6; obstacles = []; isGameOver = false;
-            dino.y = 150; dino.dy = 0; loop();
+            dino.y = groundY - 40; dino.dy = 0; loop();
         }
 
         function loop() {
@@ -71,30 +84,33 @@
             // Physique
             dino.dy += gravity;
             dino.y += dino.dy;
-            if (dino.y > 150) { dino.y = 150; dino.dy = 0; dino.grounded = true; }
+            
+            // Atterrissage sur le nouveau sol
+            if (dino.y > groundY - 40) { 
+                dino.y = groundY - 40; 
+                dino.dy = 0; 
+                dino.grounded = true; 
+            }
 
-            // Obstacles : on ajuste la distance d'apparition selon la largeur de l'écran
-            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 300)) {
-                let h = 20 + Math.random() * 40;
-                obstacles.push({ x: canvas.width, y: 190 - h, w: 20, h: h });
+            // Obstacles
+            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 350)) {
+                let h = 30 + Math.random() * 50; // Obstacles potentiellement plus grands
+                obstacles.push({ x: canvas.width, y: groundY - h, w: 25, h: h });
             }
 
             obstacles.forEach((obs, i) => {
                 obs.x -= gameSpeed;
-                // Collision
                 if (dino.x < obs.x + obs.w && dino.x + 40 > obs.x && dino.y < obs.y + obs.h && dino.y + 40 > obs.y) {
                     isGameOver = true;
                 }
-                // Nettoyage
                 if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.05; }
             });
 
-            // Dessin
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Sol (On le dessine sur TOUTE la largeur dynamique)
+            // Sol
             ctx.fillStyle = "#535353";
-            ctx.fillRect(0, 190, canvas.width, 2); 
+            ctx.fillRect(0, groundY, canvas.width, 3); 
 
             // Dino
             ctx.fillRect(dino.x, dino.y, 40, 40); 
@@ -103,19 +119,19 @@
             ctx.fillStyle = "#707070";
             obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h));
 
-            // Score dynamique (toujours collé à droite)
+            // Score
             ctx.fillStyle = "#535353";
-            ctx.font = "20px Courier New";
+            ctx.font = "24px Courier New";
             ctx.textAlign = "right";
-            ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 30);
+            ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
             ctx.textAlign = "left";
 
             if (isGameOver) {
                 ctx.textAlign = "center";
-                ctx.font = "bold 22px Courier New";
-                ctx.fillText("G A M E  O V E R", canvas.width/2, 90);
-                ctx.font = "14px Courier New";
-                ctx.fillText("CLIQUE OU ESPACE POUR REJOUER", canvas.width/2, 120);
+                ctx.font = "bold 26px Courier New";
+                ctx.fillText("G A M E  O V E R", canvas.width/2, canvas.height/2 - 20);
+                ctx.font = "16px Courier New";
+                ctx.fillText("CLIQUE POUR REJOUER", canvas.width/2, canvas.height/2 + 20);
             } else {
                 requestAnimationFrame(loop);
             }
