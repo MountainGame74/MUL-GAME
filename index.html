@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Hardcore Birds</title>
+    <title>Dino Game - Crescendo</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
@@ -29,7 +29,7 @@
 
         let score = 0;
         let highScore = localStorage.getItem('dinoHighScoreOnly') || 0;
-        let gameSpeed = 6;
+        let gameSpeed = 5; // Plus lent au départ
         let isGameOver = false;
         let gravity = 0.8;
         let obstacles = [];
@@ -41,69 +41,61 @@
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         let dino = { 
-            x: 50, 
-            y: groundY - 50, 
-            width: 50, 
-            height: 50, 
-            baseHeight: 50, 
-            duckHeight: 20, // Plus plat pour être sûr de passer
-            dy: 0, 
-            jumpForce: 16, 
-            grounded: false,
-            isDucking: false
+            x: 50, y: groundY - 50, width: 50, height: 50, 
+            baseHeight: 50, duckHeight: 20, dy: 0, 
+            jumpForce: 16, grounded: false, isDucking: false
         };
 
         function resetGame() {
-            score = 0; gameSpeed = 6; obstacles = []; isGameOver = false;
-            dino.y = groundY - 50; dino.dy = 0; nextObstacleFrame = 0;
+            score = 0; gameSpeed = 5; obstacles = []; isGameOver = false;
+            dino.y = groundY - 50; dino.dy = 0; nextObstacleFrame = 50;
         }
 
         function spawnObstacle() {
             let rand = Math.random();
-            if (rand < 0.5 && score > 5) { 
-                // OISEAUX PLUS BAS : Le bas de l'oiseau est à groundY - 30.
-                // Le Dino debout fait 50px de haut, donc il se prend l'oiseau à coup sûr !
+            
+            // Apparition des oiseaux seulement après 20 points
+            if (rand < 0.4 && score > 20) { 
                 obstacles.push({ x: canvas.width, y: groundY - 60, w: 45, h: 25, type: 'bird' });
             } else {
-                let h = 40 + Math.random() * 50;
-                obstacles.push({ x: canvas.width, y: groundY - h, w: 30, h: h, type: 'cactus' });
+                // Seulement deux tailles d'arbres possibles
+                let treeHeight = (Math.random() > 0.5) ? 40 : 60; 
+                obstacles.push({ x: canvas.width, y: groundY - treeHeight, w: 30, h: treeHeight, type: 'cactus' });
             }
         }
 
         function loop() {
             if (!isGameOver) {
                 if (keys['ArrowDown'] && dino.grounded) {
-                    dino.isDucking = true;
-                    dino.height = dino.duckHeight;
+                    dino.isDucking = true; dino.height = dino.duckHeight;
                 } else {
-                    dino.isDucking = false;
-                    dino.height = dino.baseHeight;
+                    dino.isDucking = false; dino.height = dino.baseHeight;
                 }
 
                 if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
-                    dino.dy = -dino.jumpForce;
-                    dino.grounded = false;
+                    dino.dy = -dino.jumpForce; dino.grounded = false;
                 }
 
                 dino.dy += gravity;
                 dino.y += dino.dy;
                 
                 if (dino.y + dino.height > groundY) { 
-                    dino.y = groundY - dino.height; 
-                    dino.dy = 0; 
-                    dino.grounded = true; 
+                    dino.y = groundY - dino.height; dino.dy = 0; dino.grounded = true; 
                 }
 
+                // GESTION DE LA DISTANCE CRESCENDO
                 if (nextObstacleFrame <= 0) {
                     spawnObstacle();
-                    nextObstacleFrame = (50 + Math.random() * 80) / (gameSpeed / 6);
+                    // Plus le score est haut, plus le temps entre deux obstacles peut être court
+                    let minGap = Math.max(40, 90 - (score / 2));
+                    let maxGap = Math.max(80, 160 - (score / 2));
+                    nextObstacleFrame = (minGap + Math.random() * (maxGap - minGap));
                 }
                 nextObstacleFrame--;
 
                 obstacles.forEach((obs, i) => {
                     obs.x -= gameSpeed;
                     
-                    // Collision
                     if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && 
                         dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
                         isGameOver = true;
@@ -115,7 +107,7 @@
                     if (obs.x + obs.w < 0) {
                         obstacles.splice(i, 1);
                         score++;
-                        gameSpeed += 0.07;
+                        gameSpeed += 0.03; // Accélération plus douce
                     }
                 });
             } else {
@@ -132,12 +124,9 @@
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 3);
 
-            // Dino
             ctx.fillRect(dino.x, dino.y, dino.width, dino.height); 
             
-            // Obstacles
             obstacles.forEach(obs => {
-                // Oiseaux en gris foncé, cactus en noir
                 ctx.fillStyle = obs.type === 'bird' ? "#757575" : "#535353";
                 ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
             });
