@@ -3,33 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game Clean Edition</title>
+    <title>Dino Game - Pro Moves</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        /* On met la même couleur partout pour un effet "invisible" */
-        body, html { 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
-            background: #f7f7f7; 
-        }
-        
-        #game-container { 
-            width: 100%; 
-            height: 400px; 
-            position: absolute; 
-            top: 50%; 
-            transform: translateY(-50%); 
-        }
-
-        canvas { 
-            width: 100%; 
-            height: 400px; 
-            display: block; 
-            /* Suppression de la bordure bizarre ici */
-            background: #f7f7f7; 
-        }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; }
+        #game-container { width: 100%; height: 400px; position: absolute; top: 50%; transform: translateY(-50%); background-color: #f7f7f7; }
+        canvas { display: block; width: 100%; height: 400px; background-color: #f7f7f7; border: none; }
     </style>
 </head>
 <body>
@@ -56,27 +35,23 @@
         let obstacles = [];
         const groundY = 350;
 
+        // --- ÉTAT DES TOUCHES ---
+        let keys = {};
+        window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
         let dino = { 
             x: 50, 
             y: groundY - 40, 
             width: 40, 
             height: 40, 
+            baseHeight: 40, // Taille normale
+            duckHeight: 20, // Taille quand il se baisse
             dy: 0, 
             jumpForce: 15, 
-            grounded: false 
+            grounded: false,
+            isDucking: false
         };
-
-        function jump() {
-            if (isGameOver) { resetGame(); }
-            else if (dino.grounded) { 
-                dino.dy = -dino.jumpForce; 
-                dino.grounded = false; 
-            }
-        }
-
-        window.addEventListener('keydown', (e) => { if(e.code === "Space") jump(); });
-        window.addEventListener('touchstart', (e) => { jump(); e.preventDefault(); }, {passive: false});
-        window.addEventListener('mousedown', jump);
 
         function resetGame() {
             score = 0; gameSpeed = 6; obstacles = []; isGameOver = false;
@@ -84,17 +59,42 @@
         }
 
         function loop() {
-            if (isGameOver) return;
+            if (isGameOver) {
+                // Si Game Over, on attend Espace ou Flèche Haut pour recommencer
+                if (keys['Space'] || keys['ArrowUp']) resetGame();
+                draw(); // On continue de dessiner l'écran de fin
+                requestAnimationFrame(loop);
+                return;
+            }
 
+            // --- LOGIQUE SE BAISSER ---
+            if (keys['ArrowDown'] && dino.grounded) {
+                dino.isDucking = true;
+                dino.height = dino.duckHeight;
+            } else {
+                dino.isDucking = false;
+                dino.height = dino.baseHeight;
+            }
+
+            // --- LOGIQUE SAUT ---
+            if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
+                dino.dy = -dino.jumpForce;
+                dino.grounded = false;
+            }
+
+            // Physique
             dino.dy += gravity;
             dino.y += dino.dy;
             
-            if (dino.y > groundY - 40) { 
-                dino.y = groundY - 40; 
+            // Correction de la position Y (le bas du dino doit toucher le sol)
+            let currentBottom = dino.y + dino.height;
+            if (currentBottom > groundY) { 
+                dino.y = groundY - dino.height; 
                 dino.dy = 0; 
                 dino.grounded = true; 
             }
 
+            // Obstacles
             if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 350)) {
                 let h = 30 + Math.random() * 50;
                 obstacles.push({ x: canvas.width, y: groundY - h, w: 25, h: h });
@@ -102,42 +102,42 @@
 
             obstacles.forEach((obs, i) => {
                 obs.x -= gameSpeed;
-                if (dino.x < obs.x + obs.w && dino.x + 40 > obs.x && dino.y < obs.y + obs.h && dino.y + 40 > obs.y) {
+                // Collision
+                if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && 
+                    dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
                     isGameOver = true;
                 }
                 if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.05; }
             });
 
-            // On efface avec la couleur de fond
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function draw() {
             ctx.fillStyle = "#f7f7f7";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // LA SEULE LIGNE DE SOL
             ctx.fillStyle = "#535353";
-            ctx.fillRect(0, groundY, canvas.width, 2); 
+            ctx.fillRect(0, groundY, canvas.width, 2); // Sol
 
-            // Dino
-            ctx.fillRect(dino.x, dino.y, 40, 40); 
+            // Dino (il change de forme si ducking)
+            ctx.fillRect(dino.x, dino.y, dino.width, dino.height); 
             
-            // Obstacles
             ctx.fillStyle = "#707070";
             obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h));
 
-            // Score
             ctx.fillStyle = "#535353";
             ctx.font = "24px Courier New";
             ctx.textAlign = "right";
             ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
-            ctx.textAlign = "left";
 
             if (isGameOver) {
                 ctx.textAlign = "center";
                 ctx.font = "bold 26px Courier New";
                 ctx.fillText("G A M E  O V E R", canvas.width/2, 180);
                 ctx.font = "16px Courier New";
-                ctx.fillText("CLIQUE POUR REJOUER", canvas.width/2, 220);
-            } else {
-                requestAnimationFrame(loop);
+                ctx.fillText("FLECHE HAUT POUR REJOUER", canvas.width/2, 220);
             }
         }
 
