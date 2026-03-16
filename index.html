@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Fast & Grouped</title>
+    <title>Dino Game - Desert Run</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
@@ -34,8 +34,14 @@
         let gravity = 0.8;
         let obstacles = [];
         let clouds = [];
+        let groundDetails = []; // Pour les petits traits au sol
         let nextObstacleFrame = 50; 
         const groundY = 350;
+
+        // Générer des détails de sol initiaux
+        for(let i=0; i<15; i++) {
+            groundDetails.push({ x: Math.random() * canvas.width, y: groundY + 5 + Math.random() * 20, w: 5 + Math.random() * 15 });
+        }
 
         let keys = {};
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
@@ -72,33 +78,26 @@
             ctx.fillStyle = "#757575";
             ctx.fillRect(x, y + 8, w, 12);
             ctx.fillRect(x + w - 12, y, 12, 10);
-            let wingPos = Math.sin(Date.now() / 80) > 0 ? -15 : 15;
+            let wingPos = Math.sin(Date.now() / 100) > 0 ? -15 : 15;
             ctx.fillRect(x + 15, y + 10, 12, wingPos); 
         }
 
         function spawnObstacle() {
             let rand = Math.random();
-            // OISEAUX DÈS LE DÉBUT (Score > 0)
             if (rand < 0.35) { 
                 obstacles.push({ x: canvas.width, y: groundY - 75, w: 50, h: 30, type: 'bird' });
             } else {
-                // Possibilité de cactus groupés (1, 2 ou 3 côte à côte)
-                let groupSize = Math.floor(Math.random() * 3) + 1;
+                // MAXIMUM 2 CACTUS CÔTE À CÔTE
+                let groupSize = Math.random() > 0.8 ? 2 : 1; 
                 let treeH = (Math.random() > 0.5) ? 45 : 65;
                 for(let i = 0; i < groupSize; i++) {
-                    obstacles.push({ 
-                        x: canvas.width + (i * 35), 
-                        y: groundY - treeH, 
-                        w: 30, 
-                        h: treeH, 
-                        type: 'cactus' 
-                    });
+                    obstacles.push({ x: canvas.width + (i * 40), y: groundY - treeH, w: 30, h: treeH, type: 'cactus' });
                 }
             }
         }
 
         function resetGame() {
-            score = 0; gameSpeed = 5; obstacles = []; clouds = []; isGameOver = false;
+            score = 0; gameSpeed = 5; obstacles = []; isGameOver = false;
             dino.y = groundY - 60; dino.dy = 0; nextObstacleFrame = 80;
         }
 
@@ -118,17 +117,22 @@
 
                 if (nextObstacleFrame <= 0) {
                     spawnObstacle();
-                    // On laisse un espace après le groupe
-                    nextObstacleFrame = 100 + Math.random() * 100;
+                    nextObstacleFrame = 120 + Math.random() * 100;
                 }
                 nextObstacleFrame--;
+
+                // Déplacement du sol
+                groundDetails.forEach(dot => {
+                    dot.x -= gameSpeed;
+                    if (dot.x < -20) dot.x = canvas.width + Math.random() * 50;
+                });
 
                 if (Math.random() < 0.005) clouds.push({ x: canvas.width, y: 30 + Math.random() * 80, speed: 0.5 + Math.random() });
                 clouds.forEach((c, i) => { c.x -= c.speed; if (c.x < -100) clouds.splice(i, 1); });
 
                 obstacles.forEach((obs, i) => {
                     obs.x -= gameSpeed;
-                    let margin = 5;
+                    let margin = 6; // Hitbox encore plus généreuse pour éviter le sentiment d'injustice
                     if (dino.x + margin < obs.x + obs.w - margin && 
                         dino.x + dino.width - margin > obs.x + margin && 
                         dino.y + margin < obs.y + obs.h - margin && 
@@ -152,16 +156,13 @@
             ctx.fillStyle = "#e5e5e5";
             clouds.forEach(c => { ctx.fillRect(c.x, c.y, 50, 12); ctx.fillRect(c.x + 15, c.y - 8, 20, 8); });
 
-            // SOL + PETIT SABLE
+            // SOL 
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 2);
-            // On dessine des grains de sable qui bougent avec la vitesse du jeu
-            for (let i = 0; i < 10; i++) {
-                let x = ( (i * 200) - (Date.now() * gameSpeed / 20) ) % canvas.width;
-                if (x < 0) x += canvas.width;
-                ctx.fillRect(x, groundY + 10, 3, 3);
-                ctx.fillRect(x + 50, groundY + 25, 2, 2);
-            }
+            // Traits de sol qui cassent l'effet tapis roulant
+            groundDetails.forEach(dot => {
+                ctx.fillRect(dot.x, dot.y, dot.w, 1.5);
+            });
 
             // Dino
             drawDino(dino.x, dino.y, dino.width, dino.height, dino.isDucking);
