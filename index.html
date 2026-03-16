@@ -1,18 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dino Chrome Replica</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dino Game Responsive</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f7f7f7; font-family: 'Arial', sans-serif; overflow: hidden; }
-        #game-container { position: relative; width: 600px; height: 200px; }
-        canvas { display: block; background-color: #f7f7f7; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: #f7f7f7;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #container {
+            width: 100%;
+            max-width: 1200px; /* On limite pour les écrans géants */
+            position: relative;
+        }
+        canvas { 
+            display: block;
+            width: 100%; /* S'adapte à la largeur du conteneur */
+            background-color: #fff;
+            border-bottom: 2px solid #535353;
+            touch-action: none; /* Empêche les gestes bizarres sur mobile */
+        }
+        .instructions {
+            text-align: center;
+            color: #535353;
+            margin-top: 10px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="gameCanvas" width="600" height="200"></canvas>
+    <div id="container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="instructions">ESPACE ou CLIC pour sauter</div>
     </div>
     <script src="game.js"></script>
 </body>
