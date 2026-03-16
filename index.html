@@ -3,12 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game Final</title>
+    <title>Dino Game Full-Width</title>
     <style>
-        /* CSS QUI FORCE LE PLEIN ÉCRAN */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #f7f7f7; }
-        #game-container { width: 100vw; height: 200px; position: relative; top: 50%; transform: translateY(-50%); }
-        canvas { width: 100%; height: 200px; display: block; background: #fff; border-bottom: 2px solid #535353; }
+        /* On supprime toutes les marges et on force le plein écran */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #f7f7f7; }
+        
+        #game-container { 
+            width: 100%; /* Prend toute la largeur, sans limite */
+            height: 200px; 
+            position: absolute; 
+            top: 50%; 
+            transform: translateY(-50%); 
+        }
+
+        canvas { 
+            width: 100%; 
+            height: 200px; 
+            display: block; 
+            background: #fff; 
+            border-bottom: 2px solid #535353; 
+        }
     </style>
 </head>
 <body>
@@ -21,7 +36,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // On adapte la largeur de la logique à la largeur de la fenêtre
+        // Fonction de redimensionnement sans AUCUNE limite
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = 200;
@@ -58,36 +73,49 @@
             dino.y += dino.dy;
             if (dino.y > 150) { dino.y = 150; dino.dy = 0; dino.grounded = true; }
 
-            // Obstacles
-            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 250)) {
+            // Obstacles : on ajuste la distance d'apparition selon la largeur de l'écran
+            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 300)) {
                 let h = 20 + Math.random() * 40;
                 obstacles.push({ x: canvas.width, y: 190 - h, w: 20, h: h });
             }
 
             obstacles.forEach((obs, i) => {
                 obs.x -= gameSpeed;
+                // Collision
                 if (dino.x < obs.x + obs.w && dino.x + 40 > obs.x && dino.y < obs.y + obs.h && dino.y + 40 > obs.y) {
                     isGameOver = true;
                 }
-                if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.1; }
+                // Nettoyage
+                if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.05; }
             });
 
             // Dessin
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#535353";
-            ctx.fillRect(dino.x, dino.y, 40, 40); // Dino
-            ctx.fillRect(0, 190, canvas.width, 2); // Sol
             
-            ctx.fillStyle = "#707070";
-            obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h)); // Obstacles
+            // Sol (On le dessine sur TOUTE la largeur dynamique)
+            ctx.fillStyle = "#535353";
+            ctx.fillRect(0, 190, canvas.width, 2); 
 
+            // Dino
+            ctx.fillRect(dino.x, dino.y, 40, 40); 
+            
+            // Obstacles
+            ctx.fillStyle = "#707070";
+            obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h));
+
+            // Score dynamique (toujours collé à droite)
             ctx.fillStyle = "#535353";
             ctx.font = "20px Courier New";
-            ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 80, 30);
+            ctx.textAlign = "right";
+            ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 30);
+            ctx.textAlign = "left";
 
             if (isGameOver) {
                 ctx.textAlign = "center";
-                ctx.fillText("GAME OVER - CLIQUE POUR REJOUER", canvas.width/2, 100);
+                ctx.font = "bold 22px Courier New";
+                ctx.fillText("G A M E  O V E R", canvas.width/2, 90);
+                ctx.font = "14px Courier New";
+                ctx.fillText("CLIQUE OU ESPACE POUR REJOUER", canvas.width/2, 120);
             } else {
                 requestAnimationFrame(loop);
             }
