@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Fair Play Edition</title>
+    <title>Dino Game - Fast & Grouped</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
@@ -34,14 +34,13 @@
         let gravity = 0.8;
         let obstacles = [];
         let clouds = [];
-        let nextObstacleFrame = 100; // Plus de répit au début
+        let nextObstacleFrame = 50; 
         const groundY = 350;
 
         let keys = {};
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-        // --- DINO AGRANDI (60px) ---
         let dino = { 
             x: 50, y: groundY - 60, width: 55, height: 60, 
             baseHeight: 60, duckHeight: 30, dy: 0, 
@@ -51,61 +50,56 @@
         function drawDino(x, y, w, h, isDucking) {
             ctx.fillStyle = "#535353";
             if (!isDucking) {
-                // Tête massive
-                ctx.fillRect(x + 15, y, 35, 15); 
-                ctx.fillRect(x + 45, y + 5, 10, 8); // Museau
-                // Corps
-                ctx.fillRect(x + 5, y + 15, 40, 30); 
-                // Jambes
-                ctx.fillRect(x + 10, y + 45, 8, 15); 
-                ctx.fillRect(x + 30, y + 45, 8, 15); 
-                // Oeil
-                ctx.fillStyle = "#f7f7f7";
-                ctx.fillRect(x + 20, y + 4, 4, 4);
+                ctx.fillRect(x + 15, y, 35, 15); ctx.fillRect(x + 45, y + 5, 10, 8);
+                ctx.fillRect(x + 5, y + 15, 40, 30); ctx.fillRect(x + 10, y + 45, 8, 15); ctx.fillRect(x + 30, y + 45, 8, 15);
+                ctx.fillStyle = "#f7f7f7"; ctx.fillRect(x + 20, y + 4, 4, 4);
             } else {
-                // Dino baissé (plus long et trapu)
                 ctx.fillStyle = "#535353";
-                ctx.fillRect(x, y, 60, 25); 
-                ctx.fillRect(x + 50, y - 5, 15, 15); // Tête baissée
+                ctx.fillRect(x, y, 60, 25); ctx.fillRect(x + 50, y - 5, 15, 15);
             }
         }
 
         function drawCactus(x, y, w, h) {
             ctx.fillStyle = "#535353";
             let trunkW = w/3;
-            ctx.fillRect(x + trunkW, y, trunkW, h); // Tronc
-            ctx.fillRect(x, y + h/2.5, w, 6); // Branche
-            ctx.fillRect(x, y + h/5, 6, h/4); // Pic L
-            ctx.fillRect(x + w - 6, y + h/5, 6, h/4); // Pic R
+            ctx.fillRect(x + trunkW, y, trunkW, h);
+            ctx.fillRect(x, y + h/2.5, w, 6);
+            ctx.fillRect(x, y + h/5, 6, h/4);
+            ctx.fillRect(x + w - 6, y + h/5, 6, h/4);
         }
 
         function drawBird(x, y, w, h) {
             ctx.fillStyle = "#757575";
-            ctx.fillRect(x, y + 8, w, 12); // Corps
-            ctx.fillRect(x + w - 12, y, 12, 10); // Tête
+            ctx.fillRect(x, y + 8, w, 12);
+            ctx.fillRect(x + w - 12, y, 12, 10);
             let wingPos = Math.sin(Date.now() / 80) > 0 ? -15 : 15;
             ctx.fillRect(x + 15, y + 10, 12, wingPos); 
         }
 
-        function spawnCloud() {
-            clouds.push({ x: canvas.width, y: 30 + Math.random() * 80, speed: 0.5 + Math.random() });
+        function spawnObstacle() {
+            let rand = Math.random();
+            // OISEAUX DÈS LE DÉBUT (Score > 0)
+            if (rand < 0.35) { 
+                obstacles.push({ x: canvas.width, y: groundY - 75, w: 50, h: 30, type: 'bird' });
+            } else {
+                // Possibilité de cactus groupés (1, 2 ou 3 côte à côte)
+                let groupSize = Math.floor(Math.random() * 3) + 1;
+                let treeH = (Math.random() > 0.5) ? 45 : 65;
+                for(let i = 0; i < groupSize; i++) {
+                    obstacles.push({ 
+                        x: canvas.width + (i * 35), 
+                        y: groundY - treeH, 
+                        w: 30, 
+                        h: treeH, 
+                        type: 'cactus' 
+                    });
+                }
+            }
         }
 
         function resetGame() {
             score = 0; gameSpeed = 5; obstacles = []; clouds = []; isGameOver = false;
-            dino.y = groundY - 60; dino.dy = 0; nextObstacleFrame = 120;
-        }
-
-        function spawnObstacle() {
-            let rand = Math.random();
-            if (rand < 0.4 && score > 30) { 
-                // OISEAU positionné pour être IMPOSSIBLE à éviter sans se baisser
-                obstacles.push({ x: canvas.width, y: groundY - 75, w: 50, h: 30, type: 'bird' });
-            } else {
-                // Deux tailles d'arbres seulement
-                let treeH = (Math.random() > 0.5) ? 45 : 65; 
-                obstacles.push({ x: canvas.width, y: groundY - treeH, w: 35, h: treeH, type: 'cactus' });
-            }
+            dino.y = groundY - 60; dino.dy = 0; nextObstacleFrame = 80;
         }
 
         function loop() {
@@ -122,23 +116,19 @@
                 dino.dy += gravity; dino.y += dino.dy;
                 if (dino.y + dino.height > groundY) { dino.y = groundY - dino.height; dino.dy = 0; dino.grounded = true; }
 
-                // --- PHASES DE MARCHE PLUS LONGUES ---
                 if (nextObstacleFrame <= 0) {
                     spawnObstacle();
-                    // Distance augmentée : min 100 frames, max 220 au début
-                    let gapReduction = Math.min(60, score / 3);
-                    nextObstacleFrame = (100 + Math.random() * 120) - gapReduction;
+                    // On laisse un espace après le groupe
+                    nextObstacleFrame = 100 + Math.random() * 100;
                 }
                 nextObstacleFrame--;
 
-                if (Math.random() < 0.005) spawnCloud();
+                if (Math.random() < 0.005) clouds.push({ x: canvas.width, y: 30 + Math.random() * 80, speed: 0.5 + Math.random() });
                 clouds.forEach((c, i) => { c.x -= c.speed; if (c.x < -100) clouds.splice(i, 1); });
 
                 obstacles.forEach((obs, i) => {
                     obs.x -= gameSpeed;
-                    
-                    // --- HITBOX "FAIR" (On réduit la collision de 4px de chaque côté) ---
-                    let margin = 4;
+                    let margin = 5;
                     if (dino.x + margin < obs.x + obs.w - margin && 
                         dino.x + dino.width - margin > obs.x + margin && 
                         dino.y + margin < obs.y + obs.h - margin && 
@@ -146,7 +136,7 @@
                         isGameOver = true;
                         if (score > highScore) { highScore = score; localStorage.setItem('dinoHighScoreOnly', highScore); }
                     }
-                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.025; }
+                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.02; }
                 });
             } else if (keys['Space'] || keys['ArrowUp']) resetGame();
             
@@ -160,14 +150,18 @@
             
             // Nuages
             ctx.fillStyle = "#e5e5e5";
-            clouds.forEach(c => {
-                ctx.fillRect(c.x, c.y, 50, 12);
-                ctx.fillRect(c.x + 15, c.y - 8, 20, 8);
-            });
+            clouds.forEach(c => { ctx.fillRect(c.x, c.y, 50, 12); ctx.fillRect(c.x + 15, c.y - 8, 20, 8); });
 
-            // Sol
+            // SOL + PETIT SABLE
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 2);
+            // On dessine des grains de sable qui bougent avec la vitesse du jeu
+            for (let i = 0; i < 10; i++) {
+                let x = ( (i * 200) - (Date.now() * gameSpeed / 20) ) % canvas.width;
+                if (x < 0) x += canvas.width;
+                ctx.fillRect(x, groundY + 10, 3, 3);
+                ctx.fillRect(x + 50, groundY + 25, 2, 2);
+            }
 
             // Dino
             drawDino(dino.x, dino.y, dino.width, dino.height, dino.isDucking);
@@ -178,18 +172,13 @@
                 else drawCactus(obs.x, obs.y, obs.w, obs.h);
             });
 
-            // Scores
             ctx.fillStyle = "#535353";
-            ctx.font = "20px Courier New";
-            ctx.textAlign = "right";
+            ctx.font = "20px Courier New"; ctx.textAlign = "right";
             ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
-            ctx.fillStyle = "#999";
-            ctx.fillText("HI " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
+            ctx.fillStyle = "#999"; ctx.fillText("HI " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
 
             if (isGameOver) {
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#535353";
-                ctx.font = "bold 26px Courier New";
+                ctx.textAlign = "center"; ctx.fillStyle = "#535353"; ctx.font = "bold 26px Courier New";
                 ctx.fillText("GAME OVER", canvas.width/2, 180);
             }
         }
