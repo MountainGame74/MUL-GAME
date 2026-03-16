@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Pro Moves</title>
+    <title>Dino Game - Fix & Birds</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; }
@@ -12,7 +12,6 @@
     </style>
 </head>
 <body>
-
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
     </div>
@@ -28,87 +27,103 @@
         window.addEventListener('resize', resize);
         resize();
 
+        // --- VARIABLES ---
         let score = 0;
         let gameSpeed = 6;
         let isGameOver = false;
+        let gameActive = true; 
         let gravity = 0.7;
         let obstacles = [];
+        let frames = 0;
         const groundY = 350;
 
-        // --- ÉTAT DES TOUCHES ---
         let keys = {};
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
         let dino = { 
-            x: 50, 
-            y: groundY - 40, 
-            width: 40, 
-            height: 40, 
-            baseHeight: 40, // Taille normale
-            duckHeight: 20, // Taille quand il se baisse
-            dy: 0, 
-            jumpForce: 15, 
-            grounded: false,
-            isDucking: false
+            x: 50, y: groundY - 40, width: 40, height: 40, 
+            baseHeight: 40, duckHeight: 20, dy: 0, 
+            jumpForce: 15, grounded: false, isDucking: false
         };
 
         function resetGame() {
-            score = 0; gameSpeed = 6; obstacles = []; isGameOver = false;
-            dino.y = groundY - 40; dino.dy = 0; loop();
+            score = 0;
+            gameSpeed = 6;
+            obstacles = [];
+            isGameOver = false;
+            gameActive = true;
+            dino.y = groundY - 40;
+            dino.dy = 0;
+            frames = 0;
+            // On ne relance PAS loop() ici car elle tourne déjà !
+        }
+
+        function spawnObstacle() {
+            let rand = Math.random();
+            if (rand < 0.3 && score > 10) { 
+                // OISEAU (apparaît seulement après 10 points)
+                // Position Y : à hauteur de tête (groundY - 70)
+                obstacles.push({ x: canvas.width, y: groundY - 70, w: 30, h: 20, type: 'bird' });
+            } else {
+                // CACTUS
+                let h = 30 + Math.random() * 50;
+                obstacles.push({ x: canvas.width, y: groundY - h, w: 25, h: h, type: 'cactus' });
+            }
         }
 
         function loop() {
-            if (isGameOver) {
-                // Si Game Over, on attend Espace ou Flèche Haut pour recommencer
-                if (keys['Space'] || keys['ArrowUp']) resetGame();
-                draw(); // On continue de dessiner l'écran de fin
-                requestAnimationFrame(loop);
-                return;
-            }
+            frames++;
 
-            // --- LOGIQUE SE BAISSER ---
-            if (keys['ArrowDown'] && dino.grounded) {
-                dino.isDucking = true;
-                dino.height = dino.duckHeight;
-            } else {
-                dino.isDucking = false;
-                dino.height = dino.baseHeight;
-            }
-
-            // --- LOGIQUE SAUT ---
-            if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
-                dino.dy = -dino.jumpForce;
-                dino.grounded = false;
-            }
-
-            // Physique
-            dino.dy += gravity;
-            dino.y += dino.dy;
-            
-            // Correction de la position Y (le bas du dino doit toucher le sol)
-            let currentBottom = dino.y + dino.height;
-            if (currentBottom > groundY) { 
-                dino.y = groundY - dino.height; 
-                dino.dy = 0; 
-                dino.grounded = true; 
-            }
-
-            // Obstacles
-            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 350)) {
-                let h = 30 + Math.random() * 50;
-                obstacles.push({ x: canvas.width, y: groundY - h, w: 25, h: h });
-            }
-
-            obstacles.forEach((obs, i) => {
-                obs.x -= gameSpeed;
-                // Collision
-                if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && 
-                    dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
-                    isGameOver = true;
+            if (!isGameOver) {
+                // LOGIQUE SE BAISSER
+                if (keys['ArrowDown'] && dino.grounded) {
+                    dino.isDucking = true;
+                    dino.height = dino.duckHeight;
+                } else {
+                    dino.isDucking = false;
+                    dino.height = dino.baseHeight;
                 }
-                if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.05; }
-            });
+
+                // LOGIQUE SAUT
+                if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
+                    dino.dy = -dino.jumpForce;
+                    dino.grounded = false;
+                }
+
+                // PHYSIQUE
+                dino.dy += gravity;
+                dino.y += dino.dy;
+                
+                let currentBottom = dino.y + dino.height;
+                if (currentBottom > groundY) { 
+                    dino.y = groundY - dino.height; 
+                    dino.dy = 0; 
+                    dino.grounded = true; 
+                }
+
+                // GESTION OBSTACLES
+                if (frames % 100 === 0) spawnObstacle();
+
+                obstacles.forEach((obs, i) => {
+                    obs.x -= gameSpeed;
+                    
+                    // COLLISION
+                    if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && 
+                        dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
+                        isGameOver = true;
+                    }
+
+                    if (obs.x + obs.w < 0) {
+                        obstacles.splice(i, 1);
+                        score++;
+                        gameSpeed += 0.05;
+                    }
+                });
+            } else {
+                // ÉCRAN GAME OVER : Attendre touche pour reset
+                if (keys['Space'] || keys['ArrowUp']) resetGame();
+            }
 
             draw();
             requestAnimationFrame(loop);
@@ -121,12 +136,17 @@
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 2); // Sol
 
-            // Dino (il change de forme si ducking)
+            // DESSIN DINO
+            ctx.fillStyle = "#535353";
             ctx.fillRect(dino.x, dino.y, dino.width, dino.height); 
             
-            ctx.fillStyle = "#707070";
-            obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h));
+            // DESSIN OBSTACLES
+            obstacles.forEach(obs => {
+                ctx.fillStyle = obs.type === 'bird' ? "#e74c3c" : "#707070";
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            });
 
+            // SCORE
             ctx.fillStyle = "#535353";
             ctx.font = "24px Courier New";
             ctx.textAlign = "right";
@@ -141,7 +161,7 @@
             }
         }
 
-        loop();
+        loop(); // Une seule et unique fois au lancement
     </script>
 </body>
 </html>
