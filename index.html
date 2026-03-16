@@ -3,78 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Hall of Fame</title>
+    <title>Dino Game - Record Personnel</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
         
-        #game-container { width: 100%; height: 400px; position: absolute; top: 50%; transform: translateY(-50%); }
+        #game-container { 
+            width: 100%; 
+            height: 400px; 
+            position: absolute; 
+            top: 50%; 
+            transform: translateY(-50%); 
+        }
+
         canvas { display: block; width: 100%; height: 400px; background-color: #f7f7f7; }
-
-        /* Styles des fenêtres de menu */
-        .overlay {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border: 2px solid #535353;
-            border-radius: 8px;
-            display: none;
-            z-index: 10;
-            min-width: 300px;
-        }
-
-        input { padding: 10px; margin: 10px 0; border: 1px solid #535353; width: 100%; text-transform: uppercase; }
-        
-        button {
-            padding: 10px 20px;
-            background: #535353;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin: 5px;
-            font-family: 'Courier New', Courier, monospace;
-        }
-
-        button:hover { background: #333; }
-
-        /* Tableau des scores */
-        #leaderboard-list { text-align: left; margin: 20px 0; }
-        .score-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 5px 0; }
-
-        #btn-leaderboard { position: absolute; top: 10px; left: 10px; z-index: 5; }
     </style>
 </head>
 <body>
 
-    <button id="btn-leaderboard" onclick="showLeaderboard()">🏆 VOIR LES SCORES</button>
-
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
-        
-        <div id="ui-save" class="overlay">
-            <h2>PARTIE TERMINÉE</h2>
-            <p>Ton score : <span id="current-score-display">0</span></p>
-            <input type="text" id="playerName" maxlength="10" placeholder="TON NOM">
-            <br>
-            <button onclick="submitScore()">ENREGISTRER & REJOUER</button>
-        </div>
-
-        <div id="ui-leaderboard" class="overlay">
-            <h2>CLASSEMENT (LOCAL)</h2>
-            <div id="leaderboard-list"></div>
-            <button onclick="closeLeaderboard()">FERMER</button>
-        </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const uiSave = document.getElementById('ui-save');
-        const uiLeaderboard = document.getElementById('ui-leaderboard');
-        const scoreList = document.getElementById('leaderboard-list');
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -83,38 +36,10 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- GESTION DES SCORES ---
-        let scores = JSON.parse(localStorage.getItem('dinoScores')) || [];
-
-        function submitScore() {
-            const name = document.getElementById('playerName').value.toUpperCase() || "ANONYME";
-            scores.push({ name: name, score: score });
-            // On trie du plus grand au plus petit et on garde les 5 meilleurs
-            scores.sort((a, b) => b.score - a.score);
-            scores = scores.slice(0, 5);
-            localStorage.setItem('dinoScores', JSON.stringify(scores));
-            resetGame();
-        }
-
-        function showLeaderboard() {
-            isGameOver = true; // Met le jeu en pause
-            uiSave.style.display = 'none';
-            uiLeaderboard.style.display = 'block';
-            scoreList.innerHTML = scores.map((s, i) => `
-                <div class="score-item">
-                    <span>${i+1}. ${s.name}</span>
-                    <span>${s.score.toString().padStart(5, '0')}</span>
-                </div>
-            `).join('') || "<p style='text-align:center'>Aucun score pour l'instant</p>";
-        }
-
-        function closeLeaderboard() {
-            uiLeaderboard.style.display = 'none';
-            if (isGameOver) resetGame();
-        }
-
-        // --- VARIABLES JEU ---
+        // --- VARIABLES ---
         let score = 0;
+        let highScore = localStorage.getItem('dinoHighScoreOnly') || 0; // On récupère uniquement le chiffre
+        
         let gameSpeed = 6;
         let isGameOver = false;
         let gravity = 0.7;
@@ -126,14 +51,17 @@
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-        let dino = { x: 50, y: groundY - 40, width: 40, height: 40, baseHeight: 40, duckHeight: 20, dy: 0, jumpForce: 15, grounded: false, isDucking: false };
+        let dino = { 
+            x: 50, y: groundY - 40, width: 40, height: 40, 
+            baseHeight: 40, duckHeight: 20, dy: 0, 
+            jumpForce: 15, grounded: false, isDucking: false
+        };
 
         function resetGame() {
             score = 0;
             gameSpeed = 6;
             obstacles = [];
             isGameOver = false;
-            uiSave.style.display = 'none';
             dino.y = groundY - 40;
             dino.dy = 0;
             frames = 0;
@@ -141,6 +69,7 @@
 
         function spawnObstacle() {
             let rand = Math.random();
+            // Oiseaux après 15 points
             if (rand < 0.3 && score > 15) { 
                 obstacles.push({ x: canvas.width, y: groundY - 75, w: 35, h: 25, type: 'bird' });
             } else {
@@ -151,19 +80,30 @@
 
         function loop() {
             frames++;
+
             if (!isGameOver) {
+                // LOGIQUE SAUT / BAISSE
                 if (keys['ArrowDown'] && dino.grounded) {
-                    dino.isDucking = true; dino.height = dino.duckHeight;
+                    dino.isDucking = true;
+                    dino.height = dino.duckHeight;
                 } else {
-                    dino.isDucking = false; dino.height = dino.baseHeight;
+                    dino.isDucking = false;
+                    dino.height = dino.baseHeight;
                 }
+
                 if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
-                    dino.dy = -dino.jumpForce; dino.grounded = false;
+                    dino.dy = -dino.jumpForce;
+                    dino.grounded = false;
                 }
 
                 dino.dy += gravity;
                 dino.y += dino.dy;
-                if (dino.y + dino.height > groundY) { dino.y = groundY - dino.height; dino.dy = 0; dino.grounded = true; }
+                
+                if (dino.y + dino.height > groundY) { 
+                    dino.y = groundY - dino.height; 
+                    dino.dy = 0; 
+                    dino.grounded = true; 
+                }
 
                 if (frames % 100 === 0) spawnObstacle();
 
@@ -171,37 +111,69 @@
                     obs.x -= gameSpeed;
                     if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && 
                         dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
+                        
                         isGameOver = true;
-                        document.getElementById('current-score-display').innerText = score;
-                        uiSave.style.display = 'block';
+                        
+                        // Sauvegarde immédiate si record battu
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('dinoHighScoreOnly', highScore);
+                        }
                     }
-                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.05; }
+                    if (obs.x + obs.w < 0) {
+                        obstacles.splice(i, 1);
+                        score++;
+                        gameSpeed += 0.05;
+                    }
                 });
+            } else {
+                // Si game over, une touche pour repartir
+                if (keys['Space'] || keys['ArrowUp']) {
+                    resetGame();
+                }
             }
+
             draw();
             requestAnimationFrame(loop);
         }
 
         function draw() {
+            // Fond
             ctx.fillStyle = "#f7f7f7";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Sol
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 2); 
+
+            // Dino
             ctx.fillRect(dino.x, dino.y, dino.width, dino.height); 
+            
+            // Obstacles
             obstacles.forEach(obs => {
-                ctx.fillStyle = obs.type === 'bird' ? "#707070" : "#535353";
+                ctx.fillStyle = obs.type === 'bird' ? "#757575" : "#535353";
                 ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
             });
+
+            // Affichage Score actuel
             ctx.fillStyle = "#535353";
             ctx.font = "20px Courier New";
             ctx.textAlign = "right";
             ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
-            
-            // Petit rappel du record en haut
-            const hi = scores[0] ? scores[0].score : 0;
+
+            // Affichage Record
             ctx.fillStyle = "#999";
             ctx.font = "16px Courier New";
-            ctx.fillText("HI " + hi.toString().padStart(5, '0'), canvas.width - 20, 65);
+            ctx.fillText("HI " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
+
+            if (isGameOver) {
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#535353";
+                ctx.font = "bold 26px Courier New";
+                ctx.fillText("G A M E  O V E R", canvas.width/2, 180);
+                ctx.font = "16px Courier New";
+                ctx.fillText("ESPACE OU HAUT POUR RECOMMENCER", canvas.width/2, 220);
+            }
         }
 
         loop();
