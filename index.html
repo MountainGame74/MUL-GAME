@@ -3,44 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game Responsive</title>
+    <title>Dino Game Final</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
-            background-color: #f7f7f7;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        #container {
-            width: 100%;
-            max-width: 1200px; /* On limite pour les écrans géants */
-            position: relative;
-        }
-        canvas { 
-            display: block;
-            width: 100%; /* S'adapte à la largeur du conteneur */
-            background-color: #fff;
-            border-bottom: 2px solid #535353;
-            touch-action: none; /* Empêche les gestes bizarres sur mobile */
-        }
-        .instructions {
-            text-align: center;
-            color: #535353;
-            margin-top: 10px;
-            font-size: 14px;
-        }
+        /* CSS QUI FORCE LE PLEIN ÉCRAN */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #f7f7f7; }
+        #game-container { width: 100vw; height: 200px; position: relative; top: 50%; transform: translateY(-50%); }
+        canvas { width: 100%; height: 200px; display: block; background: #fff; border-bottom: 2px solid #535353; }
     </style>
 </head>
 <body>
-    <div id="container">
+
+    <div id="game-container">
         <canvas id="gameCanvas"></canvas>
-        <div class="instructions">ESPACE ou CLIC pour sauter</div>
     </div>
-    <script src="game.js"></script>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // On adapte la largeur de la logique à la largeur de la fenêtre
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = 200;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let score = 0;
+        let gameSpeed = 6;
+        let isGameOver = false;
+        let gravity = 0.6;
+        let obstacles = [];
+        let dino = { x: 50, y: 150, width: 40, height: 40, dy: 0, grounded: false };
+
+        function jump() {
+            if (isGameOver) { resetGame(); }
+            else if (dino.grounded) { dino.dy = -12; dino.grounded = false; }
+        }
+
+        window.addEventListener('keydown', (e) => { if(e.code === "Space") jump(); });
+        window.addEventListener('touchstart', (e) => { jump(); e.preventDefault(); }, {passive: false});
+        window.addEventListener('mousedown', jump);
+
+        function resetGame() {
+            score = 0; gameSpeed = 6; obstacles = []; isGameOver = false;
+            dino.y = 150; dino.dy = 0; loop();
+        }
+
+        function loop() {
+            if (isGameOver) return;
+
+            // Physique
+            dino.dy += gravity;
+            dino.y += dino.dy;
+            if (dino.y > 150) { dino.y = 150; dino.dy = 0; dino.grounded = true; }
+
+            // Obstacles
+            if (Math.random() < 0.015 && (obstacles.length === 0 || obstacles[obstacles.length-1].x < canvas.width - 250)) {
+                let h = 20 + Math.random() * 40;
+                obstacles.push({ x: canvas.width, y: 190 - h, w: 20, h: h });
+            }
+
+            obstacles.forEach((obs, i) => {
+                obs.x -= gameSpeed;
+                if (dino.x < obs.x + obs.w && dino.x + 40 > obs.x && dino.y < obs.y + obs.h && dino.y + 40 > obs.y) {
+                    isGameOver = true;
+                }
+                if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.1; }
+            });
+
+            // Dessin
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#535353";
+            ctx.fillRect(dino.x, dino.y, 40, 40); // Dino
+            ctx.fillRect(0, 190, canvas.width, 2); // Sol
+            
+            ctx.fillStyle = "#707070";
+            obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.w, obs.h)); // Obstacles
+
+            ctx.fillStyle = "#535353";
+            ctx.font = "20px Courier New";
+            ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 80, 30);
+
+            if (isGameOver) {
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER - CLIQUE POUR REJOUER", canvas.width/2, 100);
+            } else {
+                requestAnimationFrame(loop);
+            }
+        }
+
+        loop();
+    </script>
 </body>
 </html>
