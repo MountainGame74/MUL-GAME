@@ -3,22 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Fix & Birds</title>
+    <title>Dino Game - Leaderboard Edition</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; }
-        #game-container { width: 100%; height: 400px; position: absolute; top: 50%; transform: translateY(-50%); background-color: #f7f7f7; }
-        canvas { display: block; width: 100%; height: 400px; background-color: #f7f7f7; border: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
+        
+        #game-container { 
+            width: 100%; 
+            height: 400px; 
+            position: absolute; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            background-color: #f7f7f7; 
+        }
+
+        canvas { display: block; width: 100%; height: 400px; background-color: #f7f7f7; }
+
+        /* Style pour l'entrée du nom */
+        #ui-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none; /* Caché par défaut */
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border: 2px solid #535353;
+            border-radius: 8px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #535353;
+            font-family: 'Courier New', Courier, monospace;
+            text-transform: uppercase;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #535353;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+        }
     </style>
 </head>
 <body>
+
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-overlay">
+            <h2>NOUVEAU RECORD !</h2>
+            <p>Entre ton nom :</p>
+            <input type="text" id="playerName" maxlength="10" placeholder="TON NOM">
+            <br>
+            <button onclick="saveAndRestart()">VALIDER & REJOUER</button>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const uiOverlay = document.getElementById('ui-overlay');
+        const nameInput = document.getElementById('playerName');
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -29,9 +80,11 @@
 
         // --- VARIABLES ---
         let score = 0;
+        let highScore = localStorage.getItem('dinoHighScore') || 0; // On récupère le record sauvé
+        let lastWinner = localStorage.getItem('dinoWinnerName') || "PLAYER 1";
+        
         let gameSpeed = 6;
         let isGameOver = false;
-        let gameActive = true; 
         let gravity = 0.7;
         let obstacles = [];
         let frames = 0;
@@ -52,21 +105,29 @@
             gameSpeed = 6;
             obstacles = [];
             isGameOver = false;
-            gameActive = true;
+            uiOverlay.style.display = 'none';
             dino.y = groundY - 40;
             dino.dy = 0;
             frames = 0;
-            // On ne relance PAS loop() ici car elle tourne déjà !
+        }
+
+        // Sauvegarder le nom et le score
+        function saveAndRestart() {
+            const name = nameInput.value.toUpperCase() || "ANONYME";
+            if (score > highScore) {
+                localStorage.setItem('dinoHighScore', score);
+                localStorage.setItem('dinoWinnerName', name);
+                highScore = score;
+                lastWinner = name;
+            }
+            resetGame();
         }
 
         function spawnObstacle() {
             let rand = Math.random();
-            if (rand < 0.3 && score > 10) { 
-                // OISEAU (apparaît seulement après 10 points)
-                // Position Y : à hauteur de tête (groundY - 70)
-                obstacles.push({ x: canvas.width, y: groundY - 70, w: 30, h: 20, type: 'bird' });
+            if (rand < 0.3 && score > 15) { 
+                obstacles.push({ x: canvas.width, y: groundY - 75, w: 35, h: 25, type: 'bird' });
             } else {
-                // CACTUS
                 let h = 30 + Math.random() * 50;
                 obstacles.push({ x: canvas.width, y: groundY - h, w: 25, h: h, type: 'cactus' });
             }
@@ -76,7 +137,7 @@
             frames++;
 
             if (!isGameOver) {
-                // LOGIQUE SE BAISSER
+                // LOGIQUE SAUT ET BAISSE
                 if (keys['ArrowDown'] && dino.grounded) {
                     dino.isDucking = true;
                     dino.height = dino.duckHeight;
@@ -85,48 +146,45 @@
                     dino.height = dino.baseHeight;
                 }
 
-                // LOGIQUE SAUT
                 if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
                     dino.dy = -dino.jumpForce;
                     dino.grounded = false;
                 }
 
-                // PHYSIQUE
                 dino.dy += gravity;
                 dino.y += dino.dy;
                 
-                let currentBottom = dino.y + dino.height;
-                if (currentBottom > groundY) { 
+                if (dino.y + dino.height > groundY) { 
                     dino.y = groundY - dino.height; 
                     dino.dy = 0; 
                     dino.grounded = true; 
                 }
 
-                // GESTION OBSTACLES
                 if (frames % 100 === 0) spawnObstacle();
 
                 obstacles.forEach((obs, i) => {
                     obs.x -= gameSpeed;
-                    
-                    // COLLISION
                     if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && 
                         dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
                         isGameOver = true;
+                        checkHighScore();
                     }
-
                     if (obs.x + obs.w < 0) {
                         obstacles.splice(i, 1);
                         score++;
                         gameSpeed += 0.05;
                     }
                 });
-            } else {
-                // ÉCRAN GAME OVER : Attendre touche pour reset
-                if (keys['Space'] || keys['ArrowUp']) resetGame();
             }
 
             draw();
             requestAnimationFrame(loop);
+        }
+
+        function checkHighScore() {
+            // On affiche le formulaire seulement si on a perdu
+            uiOverlay.style.display = 'block';
+            nameInput.focus();
         }
 
         function draw() {
@@ -136,32 +194,33 @@
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 2); // Sol
 
-            // DESSIN DINO
-            ctx.fillStyle = "#535353";
             ctx.fillRect(dino.x, dino.y, dino.width, dino.height); 
             
-            // DESSIN OBSTACLES
             obstacles.forEach(obs => {
-                ctx.fillStyle = obs.type === 'bird' ? "#e74c3c" : "#707070";
+                ctx.fillStyle = obs.type === 'bird' ? "#707070" : "#535353";
                 ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
             });
 
-            // SCORE
+            // Score actuel
             ctx.fillStyle = "#535353";
-            ctx.font = "24px Courier New";
+            ctx.font = "20px Courier New";
             ctx.textAlign = "right";
             ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
 
+            // AFFICHAGE DU MEILLEUR SCORE
+            ctx.fillStyle = "#757575";
+            ctx.font = "16px Courier New";
+            ctx.fillText("HI " + lastWinner + " " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
+
             if (isGameOver) {
                 ctx.textAlign = "center";
+                ctx.fillStyle = "#535353";
                 ctx.font = "bold 26px Courier New";
-                ctx.fillText("G A M E  O V E R", canvas.width/2, 180);
-                ctx.font = "16px Courier New";
-                ctx.fillText("FLECHE HAUT POUR REJOUER", canvas.width/2, 220);
+                ctx.fillText("GAME OVER", canvas.width/2, 120);
             }
         }
 
-        loop(); // Une seule et unique fois au lancement
+        loop();
     </script>
 </body>
 </html>
