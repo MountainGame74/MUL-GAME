@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Pixel Edition</title>
+    <title>Dino Game - Fair Play Edition</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
@@ -34,73 +34,77 @@
         let gravity = 0.8;
         let obstacles = [];
         let clouds = [];
-        let nextObstacleFrame = 0;
+        let nextObstacleFrame = 100; // Plus de répit au début
         const groundY = 350;
 
         let keys = {};
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
+        // --- DINO AGRANDI (60px) ---
         let dino = { 
-            x: 50, y: groundY - 50, width: 44, height: 48, 
-            baseHeight: 48, duckHeight: 25, dy: 0, 
-            jumpForce: 16, grounded: false, isDucking: false
+            x: 50, y: groundY - 60, width: 55, height: 60, 
+            baseHeight: 60, duckHeight: 30, dy: 0, 
+            jumpForce: 17, grounded: false, isDucking: false
         };
 
-        // Fonctions de dessin "Pixel Art"
         function drawDino(x, y, w, h, isDucking) {
             ctx.fillStyle = "#535353";
             if (!isDucking) {
+                // Tête massive
+                ctx.fillRect(x + 15, y, 35, 15); 
+                ctx.fillRect(x + 45, y + 5, 10, 8); // Museau
                 // Corps
-                ctx.fillRect(x + 10, y, 30, 10); // Tête
-                ctx.fillRect(x + 35, y + 2, 8, 5); // Museau
-                ctx.fillRect(x, y + 10, 35, 25); // Tronc
-                ctx.fillRect(x + 5, y + 35, 5, 10); // Jambe L
-                ctx.fillRect(x + 25, y + 35, 5, 10); // Jambe R
-                ctx.fillRect(x + 12, y + 5, 4, 4); // Oeil (vide)
+                ctx.fillRect(x + 5, y + 15, 40, 30); 
+                // Jambes
+                ctx.fillRect(x + 10, y + 45, 8, 15); 
+                ctx.fillRect(x + 30, y + 45, 8, 15); 
+                // Oeil
                 ctx.fillStyle = "#f7f7f7";
-                ctx.fillRect(x + 12, y + 5, 2, 2);
+                ctx.fillRect(x + 20, y + 4, 4, 4);
             } else {
-                // Dino baissé
+                // Dino baissé (plus long et trapu)
                 ctx.fillStyle = "#535353";
-                ctx.fillRect(x, y, 45, 20); // Corps allongé
-                ctx.fillRect(x + 35, y - 5, 15, 10); // Tête en avant
+                ctx.fillRect(x, y, 60, 25); 
+                ctx.fillRect(x + 50, y - 5, 15, 15); // Tête baissée
             }
         }
 
         function drawCactus(x, y, w, h) {
             ctx.fillStyle = "#535353";
-            ctx.fillRect(x + w/3, y, w/3, h); // Tronc principal
-            ctx.fillRect(x, y + h/3, w, 5); // Branche horizontale
-            ctx.fillRect(x, y + h/10, 5, h/3); // Pic gauche
-            ctx.fillRect(x + w - 5, y + h/10, 5, h/3); // Pic droit
+            let trunkW = w/3;
+            ctx.fillRect(x + trunkW, y, trunkW, h); // Tronc
+            ctx.fillRect(x, y + h/2.5, w, 6); // Branche
+            ctx.fillRect(x, y + h/5, 6, h/4); // Pic L
+            ctx.fillRect(x + w - 6, y + h/5, 6, h/4); // Pic R
         }
 
-        function drawBird(x, y, w, h, frame) {
+        function drawBird(x, y, w, h) {
             ctx.fillStyle = "#757575";
-            ctx.fillRect(x, y + 5, w, 10); // Corps
-            ctx.fillRect(x + w - 10, y, 10, 8); // Tête
-            // Ailes qui battent selon les frames
-            let wingPos = Math.sin(Date.now() / 100) > 0 ? -10 : 10;
-            ctx.fillRect(x + 15, y + 5, 10, wingPos); 
+            ctx.fillRect(x, y + 8, w, 12); // Corps
+            ctx.fillRect(x + w - 12, y, 12, 10); // Tête
+            let wingPos = Math.sin(Date.now() / 80) > 0 ? -15 : 15;
+            ctx.fillRect(x + 15, y + 10, 12, wingPos); 
         }
 
         function spawnCloud() {
-            clouds.push({ x: canvas.width, y: 50 + Math.random() * 100, speed: 1 + Math.random() });
+            clouds.push({ x: canvas.width, y: 30 + Math.random() * 80, speed: 0.5 + Math.random() });
         }
 
         function resetGame() {
             score = 0; gameSpeed = 5; obstacles = []; clouds = []; isGameOver = false;
-            dino.y = groundY - 50; dino.dy = 0; nextObstacleFrame = 50;
+            dino.y = groundY - 60; dino.dy = 0; nextObstacleFrame = 120;
         }
 
         function spawnObstacle() {
             let rand = Math.random();
-            if (rand < 0.4 && score > 20) { 
-                obstacles.push({ x: canvas.width, y: groundY - 70, w: 45, h: 25, type: 'bird' });
+            if (rand < 0.4 && score > 30) { 
+                // OISEAU positionné pour être IMPOSSIBLE à éviter sans se baisser
+                obstacles.push({ x: canvas.width, y: groundY - 75, w: 50, h: 30, type: 'bird' });
             } else {
-                let treeHeight = (Math.random() > 0.5) ? 40 : 60; 
-                obstacles.push({ x: canvas.width, y: groundY - treeHeight, w: 30, h: treeHeight, type: 'cactus' });
+                // Deux tailles d'arbres seulement
+                let treeH = (Math.random() > 0.5) ? 45 : 65; 
+                obstacles.push({ x: canvas.width, y: groundY - treeH, w: 35, h: treeH, type: 'cactus' });
             }
         }
 
@@ -118,24 +122,34 @@
                 dino.dy += gravity; dino.y += dino.dy;
                 if (dino.y + dino.height > groundY) { dino.y = groundY - dino.height; dino.dy = 0; dino.grounded = true; }
 
-                if (nextObstacleFrame <= 0) { spawnObstacle(); nextObstacleFrame = (50 + Math.random() * 80) / (gameSpeed / 6); }
+                // --- PHASES DE MARCHE PLUS LONGUES ---
+                if (nextObstacleFrame <= 0) {
+                    spawnObstacle();
+                    // Distance augmentée : min 100 frames, max 220 au début
+                    let gapReduction = Math.min(60, score / 3);
+                    nextObstacleFrame = (100 + Math.random() * 120) - gapReduction;
+                }
                 nextObstacleFrame--;
 
                 if (Math.random() < 0.005) spawnCloud();
-
                 clouds.forEach((c, i) => { c.x -= c.speed; if (c.x < -100) clouds.splice(i, 1); });
 
                 obstacles.forEach((obs, i) => {
                     obs.x -= gameSpeed;
-                    if (dino.x < obs.x + obs.w && dino.x + dino.width > obs.x && dino.y < obs.y + obs.h && dino.y + dino.height > obs.y) {
+                    
+                    // --- HITBOX "FAIR" (On réduit la collision de 4px de chaque côté) ---
+                    let margin = 4;
+                    if (dino.x + margin < obs.x + obs.w - margin && 
+                        dino.x + dino.width - margin > obs.x + margin && 
+                        dino.y + margin < obs.y + obs.h - margin && 
+                        dino.y + dino.height - margin > obs.y + margin) {
                         isGameOver = true;
                         if (score > highScore) { highScore = score; localStorage.setItem('dinoHighScoreOnly', highScore); }
                     }
-                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.03; }
+                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.025; }
                 });
-            } else {
-                if (keys['Space'] || keys['ArrowUp']) resetGame();
-            }
+            } else if (keys['Space'] || keys['ArrowUp']) resetGame();
+            
             draw();
             requestAnimationFrame(loop);
         }
@@ -145,16 +159,15 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Nuages
-            ctx.fillStyle = "#e0e0e0";
+            ctx.fillStyle = "#e5e5e5";
             clouds.forEach(c => {
-                ctx.fillRect(c.x, c.y, 40, 15);
-                ctx.fillRect(c.x + 10, c.y - 10, 20, 10);
+                ctx.fillRect(c.x, c.y, 50, 12);
+                ctx.fillRect(c.x + 15, c.y - 8, 20, 8);
             });
 
-            // Sol avec texture
+            // Sol
             ctx.fillStyle = "#535353";
             ctx.fillRect(0, groundY, canvas.width, 2);
-            for(let i=0; i<canvas.width; i+=100) { ctx.fillRect(i + (Date.now()/20 % 100), groundY + 5, 2, 2); }
 
             // Dino
             drawDino(dino.x, dino.y, dino.width, dino.height, dino.isDucking);
@@ -177,7 +190,7 @@
                 ctx.textAlign = "center";
                 ctx.fillStyle = "#535353";
                 ctx.font = "bold 26px Courier New";
-                ctx.fillText("G A M E  O V E R", canvas.width/2, 180);
+                ctx.fillText("GAME OVER", canvas.width/2, 180);
             }
         }
         loop();
