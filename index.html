@@ -118,4 +118,48 @@
                         gameSpeed += 0.07;
                     }
                 });
+            } else {
+                if (keys['Space'] || keys['ArrowUp']) resetGame();
             }
+
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        function draw() {
+            ctx.fillStyle = "#f7f7f7";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#535353";
+            ctx.fillRect(0, groundY, canvas.width, 3);
+
+            // Dino
+            ctx.fillRect(dino.x, dino.y, dino.width, dino.height); 
+            
+            // Obstacles
+            obstacles.forEach(obs => {
+                // Oiseaux en gris foncé, cactus en noir
+                ctx.fillStyle = obs.type === 'bird' ? "#757575" : "#535353";
+                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            });
+
+            ctx.fillStyle = "#535353";
+            ctx.font = "20px Courier New";
+            ctx.textAlign = "right";
+            ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
+            ctx.fillStyle = "#999";
+            ctx.font = "16px Courier New";
+            ctx.fillText("HI " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
+
+            if (isGameOver) {
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#535353";
+                ctx.font = "bold 26px Courier New";
+                ctx.fillText("G A M E  O V E R", canvas.width/2, 180);
+                ctx.font = "16px Courier New";
+                ctx.fillText("ESPACE OU HAUT POUR RECOMMENCER", canvas.width/2, 220);
+            }
+        }
+        loop();
+    </script>
+</body>
+</html>
