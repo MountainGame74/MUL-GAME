@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dino Game - Desert Run</title>
+    <title>The Grumpy Mule - Run</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #f7f7f7; font-family: 'Courier New', Courier, monospace; }
@@ -27,19 +27,20 @@
         window.addEventListener('resize', resize);
         resize();
 
+        // --- VARIABLES DE JEU ---
         let score = 0;
-        let highScore = localStorage.getItem('dinoHighScoreOnly') || 0;
-        let gameSpeed = 5;
+        let highScore = localStorage.getItem('muleHighScore') || 0;
+        let gameSpeed = 5; // Vitesse de départ
         let isGameOver = false;
-        let gravity = 0.8;
+        let gravity = 0.9; // Plus lourde, donc gravité un peu plus forte
         let obstacles = [];
         let clouds = [];
-        let groundDetails = []; // Pour les petits traits au sol
-        let nextObstacleFrame = 50; 
+        let groundDetails = [];
+        let nextObstacleFrame = 120; // Plus de répit au début
         const groundY = 350;
 
         // Générer des détails de sol initiaux
-        for(let i=0; i<15; i++) {
+        for(let i=0; i<20; i++) {
             groundDetails.push({ x: Math.random() * canvas.width, y: groundY + 5 + Math.random() * 20, w: 5 + Math.random() * 15 });
         }
 
@@ -47,100 +48,169 @@
         window.addEventListener('keydown', (e) => { keys[e.code] = true; });
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-        let dino = { 
-            x: 50, y: groundY - 60, width: 55, height: 60, 
-            baseHeight: 60, duckHeight: 30, dy: 0, 
-            jumpForce: 17, grounded: false, isDucking: false
+        // --- LA GRUMPY MULE (Plus grande que le Dino) ---
+        let mule = { 
+            x: 50, 
+            y: groundY - 70, // Position ajustée pour le sol
+            width: 70, // Plus large
+            height: 70, // Plus haute
+            baseHeight: 70, 
+            duckHeight: 35, // Bien écrasée pour le duck
+            dy: 0, 
+            jumpForce: 19, // Saut plus puissant
+            grounded: false,
+            isDucking: false
         };
 
-        function drawDino(x, y, w, h, isDucking) {
-            ctx.fillStyle = "#535353";
+        // --- FONCTIONS DE DESSIN PIXEL ART (Inspi Image) ---
+        function drawMule(x, y, w, h, isDucking) {
+            ctx.fillStyle = "#000000"; // Noir pour les contours de la mule
+            
             if (!isDucking) {
-                ctx.fillRect(x + 15, y, 35, 15); ctx.fillRect(x + 45, y + 5, 10, 8);
-                ctx.fillRect(x + 5, y + 15, 40, 30); ctx.fillRect(x + 10, y + 45, 8, 15); ctx.fillRect(x + 30, y + 45, 8, 15);
-                ctx.fillStyle = "#f7f7f7"; ctx.fillRect(x + 20, y + 4, 4, 4);
+                // MULE DEBOUT
+                // Tête massive
+                ctx.fillRect(x + 20, y, 35, 20); // Tête principale
+                ctx.fillRect(x + 15, y - 5, 8, 15); // Oreille gauche
+                ctx.fillRect(x + 35, y - 5, 8, 15); // Oreille droite
+                ctx.fillRect(x + 50, y + 5, 15, 10); // Museau
+
+                // Museau gris (Inspi image_0.png)
+                ctx.fillStyle = "#A9A9A9"; // Gris museau
+                ctx.fillRect(x + 52, y + 7, 10, 6);
+
+                // Expression Grincheuse (Inspi image_0.png)
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(x + 28, y + 6, 8, 3); // Oeil plissé
+                ctx.fillRect(x + 54, y + 9, 2, 2); // Narine L
+                ctx.fillRect(x + 58, y + 9, 2, 2); // Narine R
+
+                // Corps
+                ctx.fillRect(x, y + 20, 50, 35); // Tronc
+                ctx.fillRect(x - 10, y + 20, 10, 20); // Queue
+                
+                // Jambes
+                ctx.fillRect(x + 10, y + 55, 10, 20); 
+                ctx.fillRect(x + 30, y + 55, 10, 20); 
             } else {
-                ctx.fillStyle = "#535353";
-                ctx.fillRect(x, y, 60, 25); ctx.fillRect(x + 50, y - 5, 15, 15);
+                // MULE BAISSÉE (Plus longue et plate)
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(x, y, 65, 30); // Corps allongé
+                
+                // Tête baissée en avant
+                ctx.fillRect(x + 55, y - 5, 20, 15); // Tête baissée
+                ctx.fillRect(x + 50, y - 10, 6, 10); // Oreilles baissées
+                
+                // Museau et oeil baissés
+                ctx.fillStyle = "#A9A9A9"; ctx.fillRect(x + 60, y - 3, 10, 5); // Museau gris
+                ctx.fillStyle = "#000000"; ctx.fillRect(x + 57, y - 1, 5, 2); // Oeil baissé
             }
         }
 
         function drawCactus(x, y, w, h) {
-            ctx.fillStyle = "#535353";
+            ctx.fillStyle = "#000000"; // Tout noir pixel
             let trunkW = w/3;
-            ctx.fillRect(x + trunkW, y, trunkW, h);
-            ctx.fillRect(x, y + h/2.5, w, 6);
-            ctx.fillRect(x, y + h/5, 6, h/4);
-            ctx.fillRect(x + w - 6, y + h/5, 6, h/4);
+            // Tronc
+            ctx.fillRect(x + trunkW, y, trunkW, h); 
+            // Branche (Inspi image_0.png)
+            ctx.fillRect(x, y + h/2.5, w, 6); 
+            ctx.fillRect(x, y + h/5, 6, h/4); // Pic L
+            ctx.fillRect(x + w - 6, y + h/5, 6, h/4); // Pic R
         }
 
         function drawBird(x, y, w, h) {
+            ctx.fillStyle = "#757575"; // Gris pixel
+            // Corps allongé
+            ctx.fillRect(x, y + 10, w, 15); 
+            // Tête et bec rabaissés
+            ctx.fillRect(x + w - 15, y, 15, 12); 
+            ctx.fillStyle = "#FFD700"; // Bec jaune
+            ctx.fillRect(x + w + 5, y + 4, 10, 4);
+            
+            // Ailes pixelisées qui battent
             ctx.fillStyle = "#757575";
-            ctx.fillRect(x, y + 8, w, 12);
-            ctx.fillRect(x + w - 12, y, 12, 10);
             let wingPos = Math.sin(Date.now() / 100) > 0 ? -15 : 15;
-            ctx.fillRect(x + 15, y + 10, 12, wingPos); 
+            ctx.fillRect(x + 15, y + 12, 15, wingPos); 
         }
 
+        function drawCloud(x, y) {
+            ctx.fillStyle = "#e5e5e5"; // Gris très clair pixel
+            // Forme de nuage pixelisée (Inspi image_0.png)
+            ctx.fillRect(x, y, 60, 15); 
+            ctx.fillRect(x + 15, y - 10, 30, 10);
+            ctx.fillRect(x + 25, y - 20, 10, 10);
+        }
+
+        // --- FONCTIONS DE GESTION DES OBSTACLES ---
         function spawnObstacle() {
             let rand = Math.random();
-            if (rand < 0.35) { 
-                obstacles.push({ x: canvas.width, y: groundY - 75, w: 50, h: 30, type: 'bird' });
+            // Apparition des oiseaux à partir de 20 points
+            if (rand < 0.35 && score > 20) { 
+                obstacles.push({ x: canvas.width, y: groundY - 70, w: 55, h: 30, type: 'bird' });
             } else {
-                // MAXIMUM 2 CACTUS CÔTE À CÔTE
+                // Cactus de tailles variées, max 2
                 let groupSize = Math.random() > 0.8 ? 2 : 1; 
-                let treeH = (Math.random() > 0.5) ? 45 : 65;
+                let treeH = (Math.random() > 0.5) ? 50 : 75; // Légèrement plus grands
                 for(let i = 0; i < groupSize; i++) {
-                    obstacles.push({ x: canvas.width + (i * 40), y: groundY - treeH, w: 30, h: treeH, type: 'cactus' });
+                    obstacles.push({ x: canvas.width + (i * 45), y: groundY - treeH, w: 35, h: treeH, type: 'cactus' });
                 }
             }
         }
 
         function resetGame() {
-            score = 0; gameSpeed = 5; obstacles = []; isGameOver = false;
-            dino.y = groundY - 60; dino.dy = 0; nextObstacleFrame = 80;
+            score = 0; gameSpeed = 5; obstacles = []; clouds = []; isGameOver = false;
+            mule.y = groundY - 70; mule.dy = 0; nextObstacleFrame = 120;
         }
 
+        // --- BOUCLE PRINCIPALE ---
         function loop() {
             if (!isGameOver) {
-                if (keys['ArrowDown'] && dino.grounded) {
-                    dino.isDucking = true; dino.height = dino.duckHeight;
+                // LOGIQUE SAUT / BAISSE
+                if (keys['ArrowDown'] && mule.grounded) {
+                    mule.isDucking = true; mule.height = mule.duckHeight;
                 } else {
-                    dino.isDucking = false; dino.height = dino.baseHeight;
+                    mule.isDucking = false; mule.height = mule.baseHeight;
                 }
-                if ((keys['Space'] || keys['ArrowUp']) && dino.grounded && !dino.isDucking) {
-                    dino.dy = -dino.jumpForce; dino.grounded = false;
+                if ((keys['Space'] || keys['ArrowUp']) && mule.grounded && !mule.isDucking) {
+                    mule.dy = -mule.jumpForce; mule.grounded = false;
                 }
 
-                dino.dy += gravity; dino.y += dino.dy;
-                if (dino.y + dino.height > groundY) { dino.y = groundY - dino.height; dino.dy = 0; dino.grounded = true; }
+                // Physique
+                mule.dy += gravity; mule.y += mule.dy;
+                if (mule.y + mule.height > groundY) { 
+                    mule.y = groundY - mule.height; mule.dy = 0; mule.grounded = true; 
+                }
 
+                // GESTION DES OBSTACLES
                 if (nextObstacleFrame <= 0) {
                     spawnObstacle();
-                    nextObstacleFrame = 120 + Math.random() * 100;
+                    // Distance crescendo entre les vagues
+                    let gapReduction = Math.min(60, score / 3);
+                    nextObstacleFrame = (100 + Math.random() * 120) - gapReduction;
                 }
                 nextObstacleFrame--;
 
-                // Déplacement du sol
+                // Déplacement du sol (Pour l'effet de vitesse)
                 groundDetails.forEach(dot => {
                     dot.x -= gameSpeed;
                     if (dot.x < -20) dot.x = canvas.width + Math.random() * 50;
                 });
 
+                // Apparition des Nuages
                 if (Math.random() < 0.005) clouds.push({ x: canvas.width, y: 30 + Math.random() * 80, speed: 0.5 + Math.random() });
                 clouds.forEach((c, i) => { c.x -= c.speed; if (c.x < -100) clouds.splice(i, 1); });
 
+                // GESTION DES COLLISIONS
                 obstacles.forEach((obs, i) => {
                     obs.x -= gameSpeed;
-                    let margin = 6; // Hitbox encore plus généreuse pour éviter le sentiment d'injustice
-                    if (dino.x + margin < obs.x + obs.w - margin && 
-                        dino.x + dino.width - margin > obs.x + margin && 
-                        dino.y + margin < obs.y + obs.h - margin && 
-                        dino.y + dino.height - margin > obs.y + margin) {
+                    let margin = 7; // Hitbox généreuse
+                    if (mule.x + margin < obs.x + obs.w - margin && 
+                        mule.x + mule.width - margin > obs.x + margin && 
+                        mule.y + margin < obs.y + obs.h - margin && 
+                        mule.y + mule.height - margin > obs.y + margin) {
                         isGameOver = true;
-                        if (score > highScore) { highScore = score; localStorage.setItem('dinoHighScoreOnly', highScore); }
+                        if (score > highScore) { highScore = score; localStorage.setItem('muleHighScore', highScore); }
                     }
-                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.02; }
+                    if (obs.x + obs.w < 0) { obstacles.splice(i, 1); score++; gameSpeed += 0.025; }
                 });
             } else if (keys['Space'] || keys['ArrowUp']) resetGame();
             
@@ -148,24 +218,24 @@
             requestAnimationFrame(loop);
         }
 
+        // --- AFFICHAGE ---
         function draw() {
+            // Effacer l'écran
             ctx.fillStyle = "#f7f7f7";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Nuages
-            ctx.fillStyle = "#e5e5e5";
-            clouds.forEach(c => { ctx.fillRect(c.x, c.y, 50, 12); ctx.fillRect(c.x + 15, c.y - 8, 20, 8); });
+            clouds.forEach(c => { drawCloud(c.x, c.y); });
 
             // SOL 
-            ctx.fillStyle = "#535353";
+            ctx.fillStyle = "#000000"; // Noir pour le sol de l'inspi
             ctx.fillRect(0, groundY, canvas.width, 2);
-            // Traits de sol qui cassent l'effet tapis roulant
-            groundDetails.forEach(dot => {
-                ctx.fillRect(dot.x, dot.y, dot.w, 1.5);
-            });
+            // Traits de sol pixel
+            ctx.fillStyle = "#535353"; // Gris pour le sable
+            groundDetails.forEach(dot => { ctx.fillRect(dot.x, dot.y, dot.w, 1.5); });
 
-            // Dino
-            drawDino(dino.x, dino.y, dino.width, dino.height, dino.isDucking);
+            // La Grumpy Mule
+            drawMule(mule.x, mule.y, mule.width, mule.height, mule.isDucking);
             
             // Obstacles
             obstacles.forEach(obs => {
@@ -173,10 +243,12 @@
                 else drawCactus(obs.x, obs.y, obs.w, obs.h);
             });
 
+            // Scores
             ctx.fillStyle = "#535353";
             ctx.font = "20px Courier New"; ctx.textAlign = "right";
             ctx.fillText(score.toString().padStart(5, '0'), canvas.width - 20, 40);
-            ctx.fillStyle = "#999"; ctx.fillText("HI " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
+            ctx.fillStyle = "#999"; 
+            ctx.fillText("HI " + highScore.toString().padStart(5, '0'), canvas.width - 20, 65);
 
             if (isGameOver) {
                 ctx.textAlign = "center"; ctx.fillStyle = "#535353"; ctx.font = "bold 26px Courier New";
